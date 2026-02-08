@@ -4,7 +4,7 @@ import { describeRoute, resolver, validator } from "hono-openapi";
 import z from "zod";
 import { db } from "../../../database";
 import { eq } from "drizzle-orm";
-import { withPagination } from "../../utils/withPagination";
+import { paginationValidators, withPagination } from "../../utils/withPagination";
 
 const app = new Hono()
 
@@ -27,11 +27,13 @@ app.get(
     },
   }),
   async (c) => {
-    const movies = await db.select().from(exhibitorTable).limit(10);
-
-    return c.json({
-      data: movies,
+    const movies = await withPagination(exhibitorTable, {
+      page: 1,
+      pageSize: 10,
+      orderBy: eq(exhibitorTable.name, "asc"),
     });
+
+    return c.json(movies);
   },
 );
 
@@ -127,9 +129,7 @@ app.put(
  */
 app.get(
   "/:exhibitorId/screen",
-  validator("query", z.object({
-    page: z.number().min(1).positive().optional(),
-  })),
+  paginationValidators(),
   validator("param", z.object({
     exhibitorId: z.uuidv7(),
   })),
@@ -138,27 +138,17 @@ app.get(
     summary: "Get a list of exhibitor screens",
   }),
   async (c) => {
-    const { page } = c.req.valid("query");
+    const { page, pageSize } = c.req.valid("query");
     const { exhibitorId } = c.req.valid("param")
-    const screens = await db.query.exhibitorScreenTable.findMany({
-      where: eq(exhibitorScreenTable.exhibitorId, exhibitorId),
-      limit: 10,
-      offset: page ? (page - 1) * 10 : 0,
-    });
 
-    const totalScreens = await db.query.exhibitorScreenTable.findMany({
-      where: eq(exhibitorScreenTable.exhibitorId, exhibitorId),
-    });
-
-    return c.json({
-      data: screens,
-      pagination: {
-        page: page || 1,
-        pageSize: 10,
-        total: totalScreens.length,
-        totalPages: Math.ceil(totalScreens.length / 10),
-      }
-    });
+      const screens = await withPagination(exhibitorScreenTable, {
+        page,
+        pageSize,
+        orderBy: eq(exhibitorScreenTable.name, "ASC"),
+        where: eq(exhibitorScreenTable.exhibitorId, exhibitorId),
+      });
+  
+      return c.json(screens);
   },
 )
 

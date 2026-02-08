@@ -1,22 +1,15 @@
-import {
-  movieTable,
-} from "../database/schema";
-import AbacatePay from "abacatepay-nodejs-sdk";
 import { Hono } from "hono";
 import { Scalar } from "@scalar/hono-api-reference";
 import {
   openAPIRouteHandler,
 } from "hono-openapi";
-import z from "zod";
 import { movieRoutes } from "./admin/movie";
 import { exhibitorRoutes } from "./admin/exhibitor";
-import { db } from "../database";
 import { authRoutes } from "./admin/auth";
 import { logger } from 'hono/logger'
 import { jwt } from "hono/jwt";
+import { publicRoutes } from "./public";
 
-const pageSize = 10;
-const abacate = AbacatePay(process.env.ABACATE_API_KEY ?? "");
 
 const app = new Hono();
 app.use(logger());
@@ -36,14 +29,6 @@ app.get(
   }),
 );
 app.get("/docs", Scalar({ url: "/openapi.json" }));
-
-app.get("/public/movies", async (c) => {
-  const movies = await db.select().from(movieTable).limit(10);
-
-  return c.json({
-    data: movies,
-  });
-});
 
 // const checkoutSchema = z.object({
 //   costumer: z.object({
@@ -171,6 +156,7 @@ app.get("/public/movies", async (c) => {
 // );
 
 app.route("/admin/auth", authRoutes);
+app.route("/public", publicRoutes);
 app.use(
   "/admin/*",
   jwt({

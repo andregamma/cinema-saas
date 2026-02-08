@@ -1,13 +1,15 @@
 import { Hono } from "hono";
 import {
+  exhibitorScreenTable,
   movieTable,
   screeningTable,
   screeningTableInsertSchema,
 } from "../../../database/schema";
 import z from "zod";
-import { describeRoute, validator } from "hono-openapi";
+import { describeRoute, resolver, validator } from "hono-openapi";
 import { eq } from "drizzle-orm";
 import { db } from "../../../database";
+import { paginationValidators, withPagination } from "../../utils/withPagination";
 
 const movieSchema = z.object({
   title: z.string().max(255),
@@ -21,16 +23,40 @@ const app = new Hono();
 
 app.get(
   "/",
+  paginationValidators(),
   describeRoute({
     tags: ["Movies"],
     summary: "Get a list of movies",
+    responses: {
+      200: {
+        description: "A list of movies",
+        content: {
+          "application/json": {
+            schema: resolver(
+              z.object({
+                data: z.array(movieSchema),
+                pagination: z.object({
+                  page: z.number(),
+                  pageSize: z.number(),
+                  total: z.number(),
+                  totalPages: z.number(),
+                }),
+              }),
+            ),
+          },
+        },
+      },
+    },
   }),
   async (c) => {
-    const movies = await db.select().from(movieTable).limit(10);
-
-    return c.json({
-      data: movies,
+    const { page, pageSize } = c.req.valid("query");
+    const result = await withPagination(movieTable, {
+      page,
+      pageSize,
+      orderBy: eq(movieTable.title, "asc"),
     });
+
+    return c.json(result);
   },
 );
 
@@ -117,21 +143,31 @@ app.get(
       movieId: z.uuidv7(),
     }),
   ),
+  validator("query", z.object({
+    date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), // Format: YYYY-MM-DD
+  })),
   describeRoute({
     tags: ["Movies", "Screenings"],
     summary: "Get screenings for a movie",
   }),
   async (c) => {
     const { movieId } = c.req.valid("param");
+    const { date } = c.req.valid("query");
 
-    const screenings = await db
+    const query = await db
       .select()
       .from(screeningTable)
       .where(eq(screeningTable.movieId, movieId))
-      .limit(10);
+      .leftJoin(
+        exhibitorScreenTable,
+        eq(exhibitorScreenTable.id, screeningTable.exhibitorScreenId),
+      )
 
     return c.json({
-      data: screenings,
+      data: query.map((s) => ({
+        ...s.screening,
+        exhibitorScreen: s.exhibitor_screen,
+      })),
     });
   },
 );

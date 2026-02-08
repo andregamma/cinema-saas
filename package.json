@@ -2,7 +2,7 @@
   "name": "cinema-saas",
   "private": true,
   "scripts": {
-    "dev:back": "bun --filter=backend dev"
+    "dev:back": "bun --filter=backend --elide-lines=0 dev"
   },
   "workspaces": [
     "packages/*"
