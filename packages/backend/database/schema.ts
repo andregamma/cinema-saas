@@ -1,8 +1,6 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, decimal, foreignKey, integer, pgEnum, pgTable, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
-import { createUpdateSchema } from "drizzle-zod";
-import { createInsertSchema } from "drizzle-zod";
-import { createSelectSchema } from "drizzle-zod";
+import { boolean, decimal, integer, pgEnum, pgTable, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { createUpdateSchema, createInsertSchema, createSelectSchema } from "drizzle-zod";
 
 export const userTable = pgTable("user", {
   id: uuid().primaryKey().default(sql`uuidv7()`),
