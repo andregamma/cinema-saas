@@ -11,11 +11,15 @@ import z from "zod";
 import { movieRoutes } from "./admin/movie";
 import { exhibitorRoutes } from "./admin/exhibitor";
 import { db } from "../database";
+import { authRoutes } from "./admin/auth";
+import { logger } from 'hono/logger'
+import { jwt } from "hono/jwt";
 
 const pageSize = 10;
 const abacate = AbacatePay(process.env.ABACATE_API_KEY ?? "");
 
 const app = new Hono();
+app.use(logger());
 app.get(
   "/openapi.json",
   openAPIRouteHandler(app, {
@@ -166,8 +170,19 @@ app.get("/public/movies", async (c) => {
 //   },
 // );
 
-app.route("/movie", movieRoutes);
-app.route("/exhibitor", exhibitorRoutes);
+app.route("/admin/auth", authRoutes);
+app.use(
+  "/admin/*",
+  jwt({
+    secret: process.env.JWT_SECRET ?? '',
+    cookie: {
+      key: "cine_auth_token",
+    },
+    alg: "HS256",
+  })
+);
+app.route("/admin/movie", movieRoutes);
+app.route("/admin/exhibitor", exhibitorRoutes);
 
 app.get("*", (c) => {
   return c.json({ message: "Not Found" }, 404);

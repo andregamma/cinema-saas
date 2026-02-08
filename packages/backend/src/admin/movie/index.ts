@@ -1,5 +1,9 @@
 import { Hono } from "hono";
-import { movieTable } from "../../../database/schema";
+import {
+  movieTable,
+  screeningTable,
+  screeningTableInsertSchema,
+} from "../../../database/schema";
 import z from "zod";
 import { describeRoute, validator } from "hono-openapi";
 import { eq } from "drizzle-orm";
@@ -32,9 +36,12 @@ app.get(
 
 app.get(
   "/:movieId",
-  validator("param", z.object({
-    movieId: z.uuidv7(),
-  })),
+  validator(
+    "param",
+    z.object({
+      movieId: z.uuidv7(),
+    }),
+  ),
   describeRoute({
     tags: ["Movies"],
     summary: "Get a movie by ID",
@@ -46,7 +53,7 @@ app.get(
       .select()
       .from(movieTable)
       .where(eq(movieTable.id, movieId))
-      .limit(1)
+      .limit(1);
 
     if (!movie) {
       return c.json({ message: "Movie not found" }, 404);
@@ -73,9 +80,12 @@ app.post(
 
 app.put(
   "/:movieId",
-  validator("param", z.object({
-    movieId: z.uuidv7(),
-  })),
+  validator(
+    "param",
+    z.object({
+      movieId: z.uuidv7(),
+    }),
+  ),
   describeRoute({
     tags: ["Movies"],
     summary: "Update a movie",
@@ -95,16 +105,18 @@ app.put(
   },
 );
 
-
 /**
  * Screenings
  */
 
 app.get(
   "/:movieId/screening",
-  validator("param", z.object({
-    movieId: z.uuidv7(),
-  })),
+  validator(
+    "param",
+    z.object({
+      movieId: z.uuidv7(),
+    }),
+  ),
   describeRoute({
     tags: ["Movies", "Screenings"],
     summary: "Get screenings for a movie",
@@ -114,8 +126,8 @@ app.get(
 
     const screenings = await db
       .select()
-      .from(movieTable)
-      .where(eq(movieTable.id, movieId))
+      .from(screeningTable)
+      .where(eq(screeningTable.movieId, movieId))
       .limit(10);
 
     return c.json({
@@ -126,28 +138,63 @@ app.get(
 
 app.post(
   "/:movieId/screening",
-  validator("param", z.object({
-    movieId: z.uuidv7(),
-  })),
+  validator(
+    "param",
+    z.object({
+      movieId: z.uuidv7(),
+    }),
+  ),
+  validator(
+    "json",
+    z.object({
+      exhibitorsId: z.array(z.uuidv7()),
+      startTimes: z.array(z.string()),
+      price: z.number().positive(),
+    }),
+  ),
   describeRoute({
     tags: ["Movies", "Screenings"],
     summary: "Create a screening for a movie",
   }),
   async (c) => {
     const { movieId } = c.req.valid("param");
+    const body = c.req.valid("json");
 
-    // Implementation for creating a screening goes here
+    await db.transaction(async (tx) => {
+      const createdScreenings = [];
 
-    return c.json({ message: "Screening created" });
+      for (const exhibitorScreenId of body.exhibitorsId) {
+        for (const start_time of body.startTimes) {
+          const screeningToInsert = screeningTableInsertSchema.parse({
+            movieId,
+            exhibitorScreenId,
+            start_time,
+            price: body.price,
+          });
+          const [screening] = await tx.insert(screeningTable).values(screeningToInsert).returning();
+
+          if(screening){
+            createdScreenings.push(screening);
+          }
+        }
+      }
+
+      return c.json({
+        data: createdScreenings,
+      });
+    });
   },
 );
 
 app.put(
   "/:movieId/screening/:screeningId",
-  validator("param", z.object({
-    movieId: z.uuidv7(),
-    screeningId: z.uuidv7(),
-  })),
+  validator(
+    "param",
+    z.object({
+      movieId: z.uuidv7(),
+      screeningId: z.uuidv7(),
+    }),
+  ),
   describeRoute({
     tags: ["Movies", "Screenings"],
     summary: "Update a screening for a movie",
@@ -163,10 +210,13 @@ app.put(
 
 app.get(
   "/:movieId/screening/:screeningId",
-  validator("param", z.object({
-    movieId: z.uuidv7(),
-    screeningId: z.uuidv7(),
-  })),
+  validator(
+    "param",
+    z.object({
+      movieId: z.uuidv7(),
+      screeningId: z.uuidv7(),
+    }),
+  ),
   describeRoute({
     tags: ["Movies", "Screenings"],
     summary: "Get a screening by ID for a movie",

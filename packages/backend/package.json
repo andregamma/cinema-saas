@@ -1,0 +1,34 @@
+{
+  "name": "backend",
+  "module": "src/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "seed": "bun run database/seed.ts"
+  },
+  "license": "GPL-3.0-or-later",
+  "author": {
+    "name": "André Gama",
+    "email": "contato@andregama.dev",
+    "url": "https://andregama.dev"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "drizzle-kit": "^0.31.6"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@hono/standard-validator": "^0.2.0",
+    "@scalar/hono-api-reference": "^0.9.25",
+    "abacatepay-nodejs-sdk": "^1.6.0",
+    "drizzle-orm": "^0.44.7",
+    "drizzle-zod": "^0.8.3",
+    "hono": "^4.10.6",
+    "hono-openapi": "^1.1.1",
+    "zod": "^4.1.12",
+    "zod-openapi": "^5.4.3"
+  }
+}

@@ -1,6 +1,5 @@
-import { sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/bun-sql";
-import { boolean, decimal, integer, pgEnum, pgTable, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { relations, sql } from "drizzle-orm";
+import { boolean, decimal, foreignKey, integer, pgEnum, pgTable, timestamp, unique, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { createUpdateSchema } from "drizzle-zod";
 import { createInsertSchema } from "drizzle-zod";
 import { createSelectSchema } from "drizzle-zod";
@@ -35,6 +34,10 @@ export const exhibitorScreenTable = pgTable("exhibitor_screen", {
   capacity: integer().notNull(),
 })
 
+export const exhibitorScreenTableRelations = relations(exhibitorScreenTable, ({ one }) => ({
+	exhibitor: one(exhibitorTable, { fields: [exhibitorScreenTable.exhibitorId], references: [exhibitorTable.id] }),
+}));
+
 export const seatStatusEnum = pgEnum("seat_status", ["enabled", "disabled", "temporarily_disabled"])
 export const seatAxisIdentifier = pgEnum("seat_axis_identifier", ["number", "letter"])
 
@@ -66,6 +69,10 @@ export const screeningTable = pgTable("screening", {
   start_time: varchar({ length: 50 }).notNull(),
   price: decimal({ precision: 10, scale: 2 }).notNull(),
 })
+
+export const screeningTableInsertSchema = createInsertSchema(screeningTable);
+export const screeningTableUpdateSchema = createUpdateSchema(screeningTable);
+export const screeningTableSelectSchema = createSelectSchema(screeningTable);
 
 // export const bookingPaymentStatusEnum = pgEnum("booking_payment_status", ["pending", "completed", "failed", "refunded"])
 export const bookingStatusEnum = pgEnum("booking_status", ["pending", "confirmed", "canceled", "completed"])
